@@ -43,29 +43,48 @@ options = trainingOptions('sgdm',...
 %% Training Inceptionv3 CNN
  [net, info] = trainNetwork(imdsTrain, lgraph, options);
  
- %% Load Pretrained inceptionv3 network
+%% Loading Pretrained Network & Get Testing Images
+clc;
+clear all; %#ok<CLALL>
+
+PC1filePath = 'C:\Users\Jeremy\Dropbox\Coding\MATLAB_code\Assignment 3\Inception Images';
+PC2filePath = 'D:\Jeremy\Desktop\Dropbox\Coding\MATLAB_code\Assignment 3\Inception Images';
+imds = imageDatastore(PC1filePath,'IncludeSubfolders', true,...
+    'LabelSource', 'foldernames');
+
+%Split Testing Images into 150
+[imdsTrain, imdsValidation, imdsTesting] = splitEachLabel(imds, 0.70, 0.15,'randomize');
+
+%Load Pretrained inceptionv3 network
 pretrainedNet = 'trainedInception250.mat';
 load(pretrainedNet);
 
- %% Validating CNN
-correctClassifications = 0;
-incorrectClassifications = 0;
+%% Testing Pretrained CNN Showing Confusion Matrix
+%Will use pretrained network to classify images from imdsTesting
+labels = classify(net, imdsTesting);
 
-labels = classify(net, imdsValidation);
+confMat = confusionmat(imdsTesting.Labels, labels);
+confMat = confMat./sum(confMat,2);
+mean(diag(confMat))
+
+%% Showing Test Results Of CNN
+labels = classify(net, imdsTesting);
 
 % Randomly go through 150 imdsValidation images and comparing them to the
 % predicted labels given to them.
-for i = 1:150
+numbers = [];
+for i = 1:10
     rand = randi(150);
-    im = imread(imdsValidation.Files{rand});
-    if labels(rand) == imdsValidation.Labels(rand)
-        correctClassifications = correctClassifications + 1;
+    im = imread(imdsTesting.Files{rand});
+    im = imresize(im,20);
+    axis = subplot(2,5,i);
+    imshow(im)
+    if labels(rand) == imdsTesting.Labels(rand)
+        colorText = 'g';
+        title(char(labels(rand)),'Color',colorText);
     else
-        incorrectClassifications = incorrectClassifications + 1;
+        colorText = 'r';
+        title(char(labels(rand)),'Color',colorText);
     end
+    numbers = [numbers rand]; %#ok<AGROW>
 end
-
-accuracy = correctClassifications /sum(correctClassifications + incorrectClassifications)
-confMat = confusionmat(imdsValidation.Labels, labels);
-confMat = confMat./sum(confMat,2);
-mean(diag(confMat))
